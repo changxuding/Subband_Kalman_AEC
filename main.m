@@ -1,9 +1,9 @@
 clc;clear all;
 
-dir = './dt/zhoujielun';
+dir = './test_audio/AecSamples/real_linear';
 
-echo_file = [dir, '/echo.wav'];
-far_file = [dir , '/far.wav'];
+echo_file = [dir, '/real_linear_near.wav'];
+far_file = [dir , '/real_linear_far.wav'];
 
 [echo, fs1] = audioread(echo_file,'native');
 [far, fs2] = audioread(far_file, 'native');

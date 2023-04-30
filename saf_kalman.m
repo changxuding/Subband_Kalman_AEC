@@ -40,7 +40,7 @@ function out = saf_kalman(mic, spk, frame_size)
         %kalman para
         st.Rmu = ones(st.half_bin,st.tap,st.tap);
         st.Ryu = ones(st.half_bin,st.tap,st.tap)*5;
-        st.w_cov =  ones(st.half_bin, 1)*0.5;
+        st.w_cov =  ones(st.half_bin, 1)*0.1;
         st.v_cov = ones(st.half_bin, 1)*0.001;
         st.gain = zeros(st.half_bin,st.tap);
         
@@ -57,7 +57,7 @@ function out = saf_kalman(mic, spk, frame_size)
         st.echo_noise_ps = 0;
         st.adapt_cnt=0;
         st.res_old_ps = 0;
-        st.suppress_gain = 10;
+        st.suppress_gain = 20;
         st.wiener_gain = zeros(st.half_bin,1);
         st.gain_floor = ones(st.half_bin,1).*0.01;
     end
