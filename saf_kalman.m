@@ -26,9 +26,8 @@ function out = saf_kalman(mic, spk, frame_size)
         st.preemph = .98;
         
         % lp win 
-        win_st = load('win_para.mat');
+        win_st = load('win_para_update.mat');
         st.win_global = win_st.win;
-        
         % subband para
         st.ana_win_echo = zeros(1, st.win_len);
         st.ana_win_far = zeros(1, st.win_len);
@@ -80,12 +79,12 @@ function out = saf_kalman(mic, spk, frame_size)
         [mic_in, st.notch_mem] = filter_dc_notch16(mic_frame, st.notch_radius, N, st.notch_mem);
 
         st.ana_win_echo = [st.ana_win_echo(N+1:end), mic_in'];
-        ana_win_echo_windowed = st.win_global' .* st.ana_win_echo;
+        ana_win_echo_windowed = st.win_global .* st.ana_win_echo;
         ana_wined_echo = ana_win_echo_windowed(1:K)+ana_win_echo_windowed(K+1:2*K);
         fft_out_echo = fft(ana_wined_echo);
 
         st.ana_win_far = [st.ana_win_far(N + 1:end), spk_frame'];
-        ana_win_far_windowed = st.win_global' .* st.ana_win_far;
+        ana_win_far_windowed = st.win_global .* st.ana_win_far;
         ana_wined_far = ana_win_far_windowed(1:K)+ana_win_far_windowed(K+1:2*K);
         fft_out_far = fft(ana_wined_far, K);
 
@@ -120,8 +119,8 @@ function out = saf_kalman(mic, spk, frame_size)
         end
         fft_out = ifft(ifft_in);
         win_in = [fft_out, fft_out];
-        comp_out = win_in' .* st.win_global;
-        st.sys_win = st.sys_win + comp_out';
+        comp_out = win_in .* st.win_global;
+        st.sys_win = st.sys_win + comp_out;
         out = st.sys_win(1 : N); 
         st.sys_win = [st.sys_win(N + 1 : end), zeros(1, N)];
         st.adapt_cnt = st.adapt_cnt + 1;
