@@ -1,4 +1,4 @@
-function out = saf_kalman(mic, spk, frame_size)
+function out = saf_sr_kalman(mic, spk, frame_size)
 
     out_len = min(length(mic),length(spk));
     out = zeros(out_len,1);
@@ -36,7 +36,7 @@ function out = saf_kalman(mic, spk, frame_size)
         st.subband_in = zeros(st.half_bin, st.tap);
         st.subband_adf = zeros(st.half_bin, st.tap);
         
-        %kalman para
+        %sr-kalman para
         st.Ryu = ones(st.half_bin,st.tap,st.tap)*5;
         st.w_cov =  ones(st.half_bin, 1)*0.1;
         st.v_cov = ones(st.half_bin, 1)*0.001;
@@ -55,7 +55,7 @@ function out = saf_kalman(mic, spk, frame_size)
         st.echo_noise_ps = 0;
         st.adapt_cnt=0;
         st.res_old_ps = 0;
-        st.suppress_gain = 10;
+        st.suppress_gain = 20;
         st.wiener_gain = zeros(st.half_bin,1);
         st.gain_floor = ones(st.half_bin,1).*0.01;
     end
@@ -75,6 +75,7 @@ function out = saf_kalman(mic, spk, frame_size)
     function [st, out] = saf_process(st, mic_frame, spk_frame)
         N = st.frame_len;
         K = st.K;
+        M = st.tap;
         [mic_in, st.notch_mem] = filter_dc_notch16(mic_frame, st.notch_radius, N, st.notch_mem);
 
         st.ana_win_echo = [st.ana_win_echo(N+1:end), mic_in'];
@@ -87,24 +88,34 @@ function out = saf_kalman(mic, spk, frame_size)
         ana_wined_far = ana_win_far_windowed(1:K)+ana_win_far_windowed(K+1:2*K);
         fft_out_far = fft(ana_wined_far, K);
 
-        st.subband_in = [fft_out_far(1:st.half_bin)', st.subband_in(:,1:st.tap-1)];
+        st.subband_in = [fft_out_far(1:st.half_bin)', st.subband_in(:,1:M-1)];
         subband_adf_out = sum(st.subband_adf .* st.subband_in,2);
         subband_adf_err = fft_out_echo(1:st.half_bin)' - subband_adf_out;
         
-        % kalman update
+        % qr-kalman update
         for j = 1:st.half_bin
             %update sigmal v
-            st.v_cov(j) = 0.99*st.v_cov(j) + 0.01*(subband_adf_err(j)*subband_adf_err(j));
+            st.v_cov(j) = 0.9*st.v_cov(j) + 0.1*(subband_adf_err(j)*subband_adf_err(j)');
             
-            Rmu = squeeze(st.Ryu(j,:,:)) + eye(st.tap).*st.w_cov(j);
-            Re = real(st.subband_in(j,:) * Rmu * st.subband_in(j,:)') + st.v_cov(j);
-            gain = (Rmu * st.subband_in(j,:)') ./ (Re+1e-10);
+%             P2 = [squeeze(st.Ryu(j,:,:)),(eye(M).*st.w_cov(j))'];
+%             [~, R] = qr(P2);
+%             Rmu = R(1:M,1:M)';
+            Rmu = squeeze(st.Ryu(j,:,:))+ eye(M).*st.w_cov(j);
+
+            A = zeros(M+1, M+1);
+            A(1, 1) = sqrt(st.v_cov(j));
+            A(2:end, 1) = (st.subband_in(j,:) * Rmu)';
+            A(2:end, 2:end) = Rmu';
+            [~,B] = qr(A);
+            r12 = B(1,1);
+            g_r12 = B(1, 2:end)';
+            gain = g_r12 ./ ((r12)+1e-14);
             phi = gain .* subband_adf_err(j);
             st.subband_adf(j,:) = st.subband_adf(j,:) + phi.';
-            st.Ryu(j,:,:) = (eye(st.tap) - gain * st.subband_in(j,:)) * Rmu;
+            st.Ryu(j,:,:) = B(2:end,2:end)';
             
             %update sigmal w
-            st.w_cov(j) = 0.99* st.w_cov(j) + 0.01 * (sqrt(phi' * phi)/st.tap);
+            st.w_cov(j) = 0.9* st.w_cov(j) + 0.1 * (sqrt(phi' * phi)/M);
         end
         
         % compose subband
@@ -170,3 +181,4 @@ function out = saf_kalman(mic, spk, frame_size)
         nlp_out = st.wiener_gain.*error;
     end
 end
+

@@ -4,7 +4,7 @@ Residual echo suppression part same as speex.
 
 ## Linear echo cancellation
 - [X] Kalman filter
-- [ ] Square root kalman filter
+- [X] Square root kalman filter
 - [ ] Information filter
 - [ ] Square root information filter 
 
