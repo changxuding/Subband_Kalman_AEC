@@ -37,7 +37,6 @@ function out = saf_kalman(mic, spk, frame_size)
         st.subband_adf = zeros(st.half_bin, st.tap);
         
         %kalman para
-        st.Rmu = ones(st.half_bin,st.tap,st.tap);
         st.Ryu = ones(st.half_bin,st.tap,st.tap)*5;
         st.w_cov =  ones(st.half_bin, 1)*0.1;
         st.v_cov = ones(st.half_bin, 1)*0.001;
@@ -56,7 +55,7 @@ function out = saf_kalman(mic, spk, frame_size)
         st.echo_noise_ps = 0;
         st.adapt_cnt=0;
         st.res_old_ps = 0;
-        st.suppress_gain = 20;
+        st.suppress_gain = 10;
         st.wiener_gain = zeros(st.half_bin,1);
         st.gain_floor = ones(st.half_bin,1).*0.01;
     end
@@ -95,24 +94,23 @@ function out = saf_kalman(mic, spk, frame_size)
         % kalman update
         for j = 1:st.half_bin
             %update sigmal v
-            st.v_cov(j,:) = 0.99*st.v_cov(j,:) + 0.01*(abs(subband_adf_err(j)).^2);
+            st.v_cov(j) = 0.99*st.v_cov(j) + 0.01*(abs(subband_adf_err(j)).^2);
             
-            st.Rmu(j,:,:) = squeeze(st.Ryu(j,:,:)) + eye(st.tap).*st.w_cov(j);
-            st.Re(j,:) = real(st.subband_in(j,:) * squeeze(st.Rmu(j,:,:)) * st.subband_in(j,:)') + st.v_cov(j);
-            st.gain(j,:) = (squeeze(st.Rmu(j,:,:)) * st.subband_in(j,:)') ./ (st.Re(j)+1e-10);
+            Rmu = squeeze(st.Ryu(j,:,:)) + eye(st.tap).*st.w_cov(j);
+            Re = real(st.subband_in(j,:) * Rmu * st.subband_in(j,:)') + st.v_cov(j);
+            st.gain(j,:) = (Rmu * st.subband_in(j,:)') ./ (Re+1e-10);
             phi = st.gain(j,:) .* subband_adf_err(j);
             st.subband_adf(j,:) = st.subband_adf(j,:) + phi;
-            st.Ryu(j,:,:) = (eye(st.tap) - st.gain(j,:).' * st.subband_in(j,:)) * squeeze(st.Rmu(j,:,:));
+            st.Ryu(j,:,:) = (eye(st.tap) - st.gain(j,:).' * st.subband_in(j,:)) * Rmu;
             
             %update sigmal w
             st.w_cov(j) = 0.99* st.w_cov(j) + 0.01 * (sqrt(abs(phi * phi.'))/st.tap);
         end
         
-        % nlp
-        [st,nlpout] = nlpProcess(st,subband_adf_err, subband_adf_out);
-        
         % compose subband
         if(1)
+            % nlp
+            [st,nlpout] = nlpProcess(st,subband_adf_err, subband_adf_out);
             ifft_in = [nlpout', fliplr(conj(nlpout(2:end-1)'))];
         else
             ifft_in = [subband_adf_err', fliplr(conj(subband_adf_err(2:end-1)'))];

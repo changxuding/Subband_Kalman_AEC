@@ -1,15 +1,21 @@
 # Subband_Kalman_AEC
-Subband kalman filter for echo cancellation, include residual echo suppression as speex.
+Subband kalman filter(inlcude robust version like sr-kalman, if, sq-if) for echo cancellation;
+Residual echo suppression part same as speex.
+
+## Linear echo cancellation
+- [X] Kalman filter
+- [ ] Square root kalman filter
+- [ ] Information filter
+- [ ] Square root information filter 
 
 ## Main Parameters for Tuning
     linear kalman filter
-    - tap
+    - tap num
     residual echo suppression
     - suppress_gain
     others
     - smooth factor
     - min/max value
-    - nosie variance update method
 
 ## To be Optimized
 - dual filter for better control 
@@ -23,6 +29,7 @@ Subband kalman filter for echo cancellation, include residual echo suppression a
 - record from respeaker 6 mic
 - [Aec_samples](https://github.com/ewan-xu/AecSamples)
 - [AEC-Challenge](https://github.com/microsoft/AEC-Challenge)
+
 ## Reference
 - [athena-signal](https://github.com/athena-team/athena-signal)
 - [distant_speech_recognition](https://github.com/kkumatani/distant_speech_recognition)
@@ -30,3 +37,4 @@ Subband kalman filter for echo cancellation, include residual echo suppression a
 - Multirate digital signal processing,  Crochiere, R. E. , & Rabiner, L. R.
 - Study of the General Kalman Filter for Echo Cancellation, Paleologu C ,  Benesty J ,  Ciochina S
 - On Adjusting the Learning Rate in Frequency Domain Echo Cancellation With Double-Talk, Valin J M 
+- Adaptive Filter Theory. Haykin S
