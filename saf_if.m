@@ -1,4 +1,4 @@
-function out = saf_kalman(mic, spk, frame_size)
+function out = saf_if(mic, spk, frame_size)
 
     out_len = min(length(mic),length(spk));
     out = zeros(out_len,1);
@@ -41,7 +41,7 @@ function out = saf_kalman(mic, spk, frame_size)
         st.w_cov =  ones(st.half_bin, 1)*0.1;
         st.v_cov = ones(st.half_bin, 1)*0.001;
         st.gain = zeros(st.half_bin,st.tap);
-        
+        st.tmp = eye(st.tap)*1e-4;
         % nlp 
         st.Eh = zeros(st.half_bin,1);
         st.Yh = zeros(st.half_bin,1);
@@ -89,20 +89,22 @@ function out = saf_kalman(mic, spk, frame_size)
 
         st.subband_in = [fft_out_far(1:st.half_bin)', st.subband_in(:,1:st.tap-1)];
         subband_adf_out = sum(st.subband_adf .* st.subband_in,2);
-        subband_adf_err = fft_out_echo(1:st.half_bin)' - subband_adf_out;
+        subband_y = fft_out_echo(1:st.half_bin)';
+        subband_adf_err = subband_y - subband_adf_out;
         
         % kalman update
         for j = 1:st.half_bin
             %update sigmal v
             st.v_cov(j) = 0.99*st.v_cov(j) + 0.01*(subband_adf_err(j)*subband_adf_err(j)');
-            
             Rmu = squeeze(st.Ryu(j,:,:)) + eye(st.tap).*st.w_cov(j);
-            Re = real(st.subband_in(j,:) * Rmu * st.subband_in(j,:)') + st.v_cov(j);
-            gain = (Rmu * st.subband_in(j,:)') ./ (Re+1e-10);
-            phi = gain .* subband_adf_err(j);
-            st.subband_adf(j,:) = st.subband_adf(j,:) + phi.';
-            st.Ryu(j,:,:) = (eye(st.tap) - gain * st.subband_in(j,:)) * Rmu;
-            
+            Rmu1 = inv(Rmu);
+            K1 = Rmu1 + st.subband_in(j,:)' * st.subband_in(j,:) ./  st.v_cov(j) + st.tmp;
+            K1_X = Rmu1 * st.subband_adf(j,:).' + st.subband_in(j,:)' *  subband_y(j) ./  st.v_cov(j);
+            K = inv(K1);
+            st.Ryu(j,:,:) = K;
+            adf_coef = K * K1_X;
+            phi = adf_coef - st.subband_adf(j,:).';
+            st.subband_adf(j,:) = adf_coef;
             %update sigmal w
             st.w_cov(j) = 0.99* st.w_cov(j) + 0.01 * (sqrt(phi' * phi)/st.tap);
         end
