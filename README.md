@@ -6,7 +6,7 @@ Residual echo suppression part same as speex.
 - [X] Kalman filter
 - [X] Square root kalman filter
 - [X] Information filter
-- [ ] Square root information filter(still nor work) 
+- [ ] Square root information filter(still not work) 
 
 ## Main Parameters for Tuning
     linear kalman filter
