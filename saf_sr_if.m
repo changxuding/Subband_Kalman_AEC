@@ -1,4 +1,4 @@
-function out = saf_if(mic, spk, frame_size)
+function out = saf_sr_if(mic, spk, frame_size)
 
     out_len = min(length(mic),length(spk));
     out = zeros(out_len,1);
@@ -23,28 +23,28 @@ function out = saf_if(mic, spk, frame_size)
         st.memX = 0;
         st.memD = 0;
         st.memE = 0;
-        st.preemph = .98;
         
         % lp win 
         win_st = load('win_para_update.mat');
         st.win_global = win_st.win;
+        
         % subband para
         st.ana_win_echo = zeros(1, st.win_len);
         st.ana_win_far = zeros(1, st.win_len);
         st.sys_win = zeros(1, st.win_len);
-        st.tap = 15;
+        st.tap = 10;
         st.subband_in = zeros(st.half_bin, st.tap);
         st.subband_adf = zeros(st.half_bin, st.tap);
         
         %kalman para
-        st.Ryu = ones(st.half_bin,st.tap,st.tap);
+        st.Ryu = zeros(st.half_bin,st.tap,st.tap);
         st.w_cov =  ones(st.half_bin, 1)*0.1;
         st.v_cov = ones(st.half_bin, 1)*0.001;
-        st.gain = zeros(st.half_bin,st.tap);
-        st.tmp = eye(st.tap)*1e-4;
+        st.X1_K = zeros(st.half_bin, st.tap);
         for i_ryu=1:st.half_bin
-            st.Ryu(i_ryu,:,:) = eye(st.tap)*10;
+            st.Ryu(i_ryu,:,:) = eye(st.tap)*1;
         end
+        
         % nlp 
         st.Eh = zeros(st.half_bin,1);
         st.Yh = zeros(st.half_bin,1);
@@ -78,6 +78,7 @@ function out = saf_if(mic, spk, frame_size)
     function [st, out] = saf_process(st, mic_frame, spk_frame)
         N = st.frame_len;
         K = st.K;
+        M = st.tap;
         [mic_in, st.notch_mem] = filter_dc_notch16(mic_frame, st.notch_radius, N, st.notch_mem);
 
         st.ana_win_echo = [st.ana_win_echo(N+1:end), mic_in'];
@@ -99,21 +100,33 @@ function out = saf_if(mic, spk, frame_size)
         for j = 1:st.half_bin
             %update sigmal v
             st.v_cov(j) = 0.99*st.v_cov(j) + 0.01*(subband_adf_err(j)*subband_adf_err(j)');
-            Rmu = squeeze(st.Ryu(j,:,:)) + eye(st.tap).*st.w_cov(j);
-            Rmu1 = inv(Rmu);
-            K1 = Rmu1 + st.subband_in(j,:)' * st.subband_in(j,:) ./  st.v_cov(j) + st.tmp;
-            K1_X = Rmu1 * st.subband_adf(j,:).' + st.subband_in(j,:)' *  subband_y(j) ./  st.v_cov(j);
-            K = inv(K1);
-            st.Ryu(j,:,:) = K;
-            adf_coef = K * K1_X;
-            phi = adf_coef - st.subband_adf(j,:).';
+            
+            % update
+            Rmu1 = (squeeze(st.Ryu(j,:,:)));
+            X1_K = st.X1_K(j,:);
+            A2 = [eye(M).*sqrt(1/st.w_cov(j)), zeros(M,M), zeros(M,1); -Rmu1, Rmu1, X1_K.'];
+            [~, B2] = qr(A2);
+            X1_K = B2(M+1:end,end);
+            Ryu = B2(M+1:end, M+1:end-1);
+     
+            % predict
+            tmp = sqrt(st.v_cov(j)) + eps;
+            A1 = [Ryu, X1_K; st.subband_in(j,:)./tmp, subband_y(j)./tmp];
+            [~,B1] = qr(A1);
+            Ryu1 = B1(1:M,1:M);
+            X1_K =  B1(1:M,end);
+            st.Ryu(j,:,:) = Ryu1;
+
+            adf_coef = X1_K.' / Ryu1;
+            phi = adf_coef - st.subband_adf(j,:);
             st.subband_adf(j,:) = adf_coef;
+            
             %update sigmal w
-            st.w_cov(j) = 0.99* st.w_cov(j) + 0.01 * (sqrt(phi' * phi)/st.tap);
+            st.w_cov(j) = 0.99* st.w_cov(j) + 0.01 * (sqrt(phi * phi')/st.tap);
         end
         
         % compose subband
-        if(1)
+        if(0)
             % nlp
             [st,nlpout] = nlpProcess(st,subband_adf_err, subband_adf_out);
             ifft_in = [nlpout', fliplr(conj(nlpout(2:end-1)'))];
