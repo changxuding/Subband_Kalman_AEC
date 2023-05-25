@@ -97,22 +97,20 @@ function out = saf_sr_kalman(mic, spk, frame_size)
             %update sigmal v
             st.v_cov(j) = 0.9*st.v_cov(j) + 0.1*(subband_adf_err(j)*subband_adf_err(j)');
             
-%             P2 = [squeeze(st.Ryu(j,:,:)),(eye(M).*st.w_cov(j))'];
-%             [~, R] = qr(P2);
-%             Rmu = R(1:M,1:M)';
-            Rmu = squeeze(st.Ryu(j,:,:))+ eye(M).*st.w_cov(j);
+            % predict
+            A1 = [(eye(M).*sqrt(st.w_cov(j))), squeeze(st.Ryu(j,:,:))]';
+            [~, B1] = qr(A1);
+            Rmu = B1(1:M,1:M)';
 
-            A = zeros(M+1, M+1);
-            A(1, 1) = sqrt(st.v_cov(j));
-            A(2:end, 1) = (st.subband_in(j,:) * Rmu)';
-            A(2:end, 2:end) = Rmu';
-            [~,B] = qr(A);
-            r12 = B(1,1);
-            g_r12 = B(1, 2:end)';
+            % update
+            A2 =[sqrt(st.v_cov(j)), zeros(1,M);(st.subband_in(j,:) * Rmu)',  Rmu']; 
+            [~,B2] = qr(A2);
+            r12 = B2(1,1);
+            g_r12 = B2(1, 2:end)';
             gain = g_r12 ./ ((r12)+1e-14);
             phi = gain .* subband_adf_err(j);
             st.subband_adf(j,:) = st.subband_adf(j,:) + phi.';
-            st.Ryu(j,:,:) = B(2:end,2:end)';
+            st.Ryu(j,:,:) = B2(2:end,2:end)';
             
             %update sigmal w
             st.w_cov(j) = 0.9* st.w_cov(j) + 0.1 * (sqrt(phi' * phi)/M);
@@ -181,4 +179,3 @@ function out = saf_sr_kalman(mic, spk, frame_size)
         nlp_out = st.wiener_gain.*error;
     end
 end
-
