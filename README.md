@@ -6,7 +6,7 @@ Residual echo suppression part same as speex.
 - [X] Kalman filter
 - [X] Square root kalman filter
 - [X] Information filter
-- [ ] Square root information filter(still not work) 
+- [X] Square root information filter
 
 ## Main Parameters for Tuning
     linear kalman filter
@@ -39,3 +39,4 @@ Residual echo suppression part same as speex.
 - On Adjusting the Learning Rate in Frequency Domain Echo Cancellation With Double-Talk, Valin J M 
 - Adaptive Filter Theory. Haykin S
 - Factorization Methods for Discrete Sequential Estimation,  Gerald J. Bierman
+- Kalman Filtering: Theory and Practice, Mohinder S. Grewal and Angus P. Andrews
