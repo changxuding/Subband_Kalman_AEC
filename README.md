@@ -8,20 +8,6 @@ Residual echo suppression part same as speex.
 - [X] Information filter
 - [X] Square root information filter
 
-## Main Parameters for Tuning
-    linear kalman filter
-    - tap num
-    residual echo suppression
-    - suppress_gain
-    others
-    - smooth factor
-    - min/max value
-
-## To be Optimized
-- dual filter for better control 
-- dtd for different residual echo supression between st and dt
-- matrix calculation efficiency of m file
-
 ## Something to be Concerned
 - bad performance of high frequency in some cases
 
