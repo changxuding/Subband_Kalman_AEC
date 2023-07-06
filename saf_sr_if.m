@@ -135,7 +135,7 @@ function out = saf_sr_if(mic, spk, frame_size)
         else
             ifft_in = [subband_adf_err', fliplr(conj(subband_adf_err(2:end-1)'))];
         end
-        fft_out = ifft(ifft_in);
+        fft_out = real(ifft(ifft_in));
         win_in = [fft_out, fft_out];
         comp_out = win_in .* st.win_global;
         st.sys_win = st.sys_win + comp_out;

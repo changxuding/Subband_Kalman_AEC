@@ -55,7 +55,7 @@ function out = saf_kalman(mic, spk, frame_size)
         st.echo_noise_ps = 0;
         st.adapt_cnt=0;
         st.res_old_ps = 0;
-        st.suppress_gain = 10;
+        st.suppress_gain = 60;
         st.wiener_gain = zeros(st.half_bin,1);
         st.gain_floor = ones(st.half_bin,1).*0.01;
     end
@@ -115,7 +115,7 @@ function out = saf_kalman(mic, spk, frame_size)
         else
             ifft_in = [subband_adf_err', fliplr(conj(subband_adf_err(2:end-1)'))];
         end
-        fft_out = ifft(ifft_in);
+        fft_out = real(ifft(ifft_in));
         win_in = [fft_out, fft_out];
         comp_out = win_in .* st.win_global;
         st.sys_win = st.sys_win + comp_out;
@@ -165,7 +165,7 @@ function out = saf_kalman(mic, spk, frame_size)
         prioriser = 0.5.*max(0, postser)+0.5.*(st.res_old_ps./st.echo_noise_ps);
         prioriser = min(prioriser,100);
         st.wiener_gain = prioriser./(prioriser+1);
-        st.wiener_gain = max(st.wiener_gain,st.gain_floor);
+        st.wiener_gain(1:100) = max(st.wiener_gain(1:100),0.1);
         st.res_old_ps = 0.8*st.res_old_ps + 0.2*st.wiener_gain.*res_ps;
         nlp_out = st.wiener_gain.*error;
     end
